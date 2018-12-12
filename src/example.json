@@ -1,0 +1,5 @@
+[
+    {"name": "My project", "dockerPort": "80", "service": "Nginx", "comment": ""},
+    {"name": "My project", "dockerPort": "81", "service": "Db", "comment": ""},
+    {"name": "My projet 2", "dockerPort": "82", "service": "uWSGI", "comment": "A thing"}
+]
