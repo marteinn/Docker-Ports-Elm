@@ -1,0 +1,7 @@
+body {
+    margin: 2rem
+}
+
+.table-full-width {
+    width: calc(100% - 8px);
+}
