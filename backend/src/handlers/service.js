@@ -31,8 +31,6 @@ const createService = async (event, context) => {
         }
     })
 
-    const cleanedExtraValues = R.filter(R.pipe(R.isEmpty, R.not), extraValues)
-
     if (services.length) {
         return buildErrorResponse({
             message: "Port already assigned",
@@ -40,6 +38,7 @@ const createService = async (event, context) => {
         });
     }
 
+    const cleanedExtraValues = R.filter(R.pipe(R.isEmpty, R.not), extraValues)
     const model = {
         ...cleanedExtraValues,
         dockerPort,
@@ -93,6 +92,12 @@ const queryDoc = async (config, params) => {
     return R.prop('Items', resp)
 }
 
+const deleteDoc = async (config, params) => {
+    const docClient = new AWS.DynamoDB.DocumentClient();
+    const options = { ...config, Key: params }
+    return docClient.delete(options).promise();
+}
+
 const scanDoc = async (config, params = {}) => {
     const docClient = new AWS.DynamoDB.DocumentClient();
     const options = { ...config, ...params };
@@ -121,9 +126,31 @@ const getService = async (event, context) => {
 };
 
 const deleteService = async (event, context) => {
+    let { dockerPort } = event.pathParameters
+    dockerPort = Number(dockerPort)
+
+    const services = await queryDoc({ TableName: getSettings().TABLE_NAME }, {
+        KeyConditionExpression: 'dockerPort = :dockerPort',
+        ExpressionAttributeValues: {
+            ':dockerPort': dockerPort,
+        }
+    })
+
+    if (!services.length) {
+        return buildErrorResponse({
+            message: "Service was not found",
+            code: "PORT_NOT_FOUND"
+        });
+    }
+    const service = R.head(services)
+
+    await deleteDoc({ TableName: getSettings().TABLE_NAME }, {
+        dockerPort: service.dockerPort,
+        project: service.project,
+    })
+
     return {
         statusCode: 200,
-        body: JSON.stringify({})
     };
 }
 

@@ -53,9 +53,13 @@ functions:
     handler: handlers.deleteService
     events:
       - http:
-          path: services
+          path: services/{dockerPort}
           method: delete
           cors: true
+          request:
+            parameters:
+              paths:
+                dockerPort: true
 
 resources:
   - ${file(resources/dynamodb-table.yml)}
