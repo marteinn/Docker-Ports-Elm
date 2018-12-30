@@ -56,6 +56,7 @@ type alias Model =
     , loadingState : LoadingState
     , showAddNew : Bool
     , newService : Service
+    , editService : Maybe Service
     }
 
 
@@ -65,6 +66,7 @@ emptyModel =
     , loadingState = Idle
     , showAddNew = False
     , newService = emptyService
+    , editService = Nothing
     }
 
 
@@ -86,9 +88,16 @@ type Msg
     | UpdateNewServiceDockerPort String
     | UpdateNewServiceName String
     | UpdateNewServiceComment String
+    | EditServiceProject String
+    | EditServiceDockerPort String
+    | EditServiceName String
+    | EditServiceComment String
+    | SaveEditService
+    | CloseEditService
     | LoadingServices
     | SaveNewService
     | DeleteService Service
+    | ShowEditService Service
     | DeletedService (Result Http.Error ())
     | GotServices (Result Http.Error (List Service))
     | GotService (Result Http.Error Service)
@@ -109,6 +118,9 @@ update msg model =
         ShowAddNewService ->
             ( { model | showAddNew = True }, Cmd.none )
 
+        ShowEditService service ->
+            ( { model | editService = Just service }, Cmd.none )
+
         CloseAddNewService ->
             ( { model | showAddNew = False }, Cmd.none )
 
@@ -127,6 +139,62 @@ update msg model =
 
         DeletedService _ ->
             ( model, Cmd.none )
+
+        EditServiceProject value ->
+            let
+                service =
+                    Maybe.withDefault emptyService model.editService
+
+                updatedService =
+                    { service | project = value }
+            in
+            ( { model | editService = Just updatedService }, Cmd.none )
+
+        EditServiceDockerPort value ->
+            let
+                service =
+                    Maybe.withDefault emptyService model.editService
+
+                updatedService =
+                    { service | dockerPort = String.toInt value |> Maybe.withDefault 0 }
+            in
+            ( { model | editService = Just updatedService }, Cmd.none )
+
+        EditServiceName value ->
+            let
+                service =
+                    Maybe.withDefault emptyService model.editService
+
+                updatedService =
+                    { service | name = value }
+            in
+            ( { model | editService = Just updatedService }, Cmd.none )
+
+        EditServiceComment value ->
+            let
+                service =
+                    Maybe.withDefault emptyService model.editService
+
+                updatedService =
+                    { service | comment = value }
+            in
+            ( { model | editService = Just updatedService }, Cmd.none )
+
+        SaveEditService ->
+            let
+                editService =
+                    Maybe.withDefault emptyService model.editService
+
+                filteredServices =
+                    List.filter (isNotService editService) model.services
+
+                updatedServices =
+                    filteredServices ++ [ editService ]
+            in
+            ( { model | services = updatedServices, editService = Nothing }, Cmd.none )
+
+        CloseEditService ->
+            ( { model | editService = Nothing }, Cmd.none )
 
         UpdateNewServiceProject value ->
             let
@@ -249,6 +317,12 @@ view model =
 
             True ->
                 viewCreateNewService model.newService
+        , case model.editService of
+            Just service ->
+                viewEditService service
+
+            Nothing ->
+                Html.text ""
         , case model.loadingState of
             Idle ->
                 viewLoader "0" "100"
@@ -264,10 +338,36 @@ view model =
         ]
 
 
+viewEditService : Service -> Html Msg
+viewEditService service =
+    section [ class "nes-container with-title" ]
+        [ h2 [ class "title" ] [ text "Edit service" ]
+        , div [ class "nes-field" ]
+            [ label [] [ text "Project" ]
+            , input [ class "nes-input", value service.project, placeholder "Coffee Machine Website", onInput EditServiceProject ] []
+            ]
+
+        {--, div [ class "nes-field" ]--}
+        --[ label [] [ text "Port" ]
+        --, input [ class "nes-input", value (String.fromInt service.dockerPort), placeholder "7777", onInput EditServiceDockerPort ] []
+        {--]--}
+        , div [ class "nes-field" ]
+            [ label [] [ text "Name" ]
+            , input [ class "nes-input", value service.name, placeholder "Web", onInput EditServiceName ] []
+            ]
+        , div [ class "nes-field" ]
+            [ label [] [ text "Comment" ]
+            , textarea [ class "nes-textarea", value service.comment, onInput EditServiceComment ] []
+            ]
+        , button [ class "nes-btn is-primary", onClick SaveEditService ] [ text "Update" ]
+        , button [ class "nes-btn is-secondary", onClick CloseEditService ] [ text "Close" ]
+        ]
+
+
 viewCreateNewService : Service -> Html Msg
 viewCreateNewService service =
     section [ class "nes-container with-title" ]
-        [ h2 [ class "title" ] [ text "Register new port" ]
+        [ h2 [ class "title" ] [ text "Register new service" ]
         , div [ class "nes-field" ]
             [ label [] [ text "Project" ]
             , input [ class "nes-input", value service.project, placeholder "Coffee Machine Website", onInput UpdateNewServiceProject ] []
@@ -337,7 +437,7 @@ viewService service =
         , td [] [ text service.name ]
         , td [] [ text service.comment ]
         , td []
-            [ button [ class "nes-btn" ] [ text "Edit" ]
+            [ button [ class "nes-btn", onClick (ShowEditService service) ] [ text "Edit" ]
             , button [ class "nes-btn is-error", onClick (DeleteService service) ] [ text "Delete" ]
             ]
         ]
