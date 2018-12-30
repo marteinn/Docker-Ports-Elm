@@ -305,8 +305,11 @@ viewLoader min_ max_ =
 viewServiceList : List Service -> Html Msg
 viewServiceList services =
     let
+        sortedServices =
+            List.sortBy .dockerPort services
+
         children =
-            List.map viewService services
+            List.map viewService sortedServices
     in
     section [ class "nes-container with-title" ]
         [ h2 [ class "title" ] [ text "Services" ]
