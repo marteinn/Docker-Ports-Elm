@@ -13,3 +13,4 @@ Show associated docker ports from a external api
 - [ ] Edit existing service
 - [ ] Delete service
 - [ ] Reload services
+- [ ] Sorting

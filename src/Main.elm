@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser
+import Array
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
@@ -88,6 +89,7 @@ type Msg
     | LoadingServices
     | SaveNewService
     | DeleteService Service
+    | DeletedService (Result Http.Error ())
     | GotServices (Result Http.Error (List Service))
     | GotService (Result Http.Error Service)
 
@@ -115,8 +117,12 @@ update msg model =
 
         DeleteService service ->
             let
-                _ = Debug.log "msg" service
-            in ( model, Cmd.none )
+                services = model.services
+                updatedServices = List.filter (isNotService service) services
+            in ( { model | services = updatedServices }, deleteService service )
+
+        DeletedService _ ->
+            (model, Cmd.none)
 
         UpdateNewServiceProject value ->
             let
@@ -204,6 +210,10 @@ importCss : String -> Html Msg
 importCss href_ =
     node "link" [ rel "stylesheet", href href_ ] []
 
+
+isNotService : Service -> Service -> Bool
+isNotService needle service =
+    needle.dockerPort /= service.dockerPort
 
 
 -- VIEW
@@ -337,6 +347,9 @@ getServices =
         }
 
 
+
+
+
 addNewService : Service -> Cmd Msg
 addNewService service =
     let
@@ -347,6 +360,18 @@ addNewService service =
         { body = body
         , url = "http://localhost:3000/services"
         , expect = Http.expectJson GotService decoder
+        }
+
+deleteService : Service -> Cmd Msg
+deleteService service =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = "http://localhost:3000/services/" ++ (String.fromInt service.dockerPort)
+        , body = Http.emptyBody
+        , timeout = Nothing
+        , tracker = Nothing
+        , expect = Http.expectWhatever DeletedService
         }
 
 
