@@ -1,7 +1,7 @@
 module Main exposing (main)
 
-import Browser
 import Array
+import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
@@ -117,12 +117,16 @@ update msg model =
 
         DeleteService service ->
             let
-                services = model.services
-                updatedServices = List.filter (isNotService service) services
-            in ( { model | services = updatedServices }, deleteService service )
+                services =
+                    model.services
+
+                updatedServices =
+                    List.filter (isNotService service) services
+            in
+            ( { model | services = updatedServices }, deleteService service )
 
         DeletedService _ ->
-            (model, Cmd.none)
+            ( model, Cmd.none )
 
         UpdateNewServiceProject value ->
             let
@@ -214,6 +218,7 @@ importCss href_ =
 isNotService : Service -> Service -> Bool
 isNotService needle service =
     needle.dockerPort /= service.dockerPort
+
 
 
 -- VIEW
@@ -330,7 +335,7 @@ viewService service =
         , td [] [ text service.comment ]
         , td []
             [ button [ class "nes-btn" ] [ text "Edit" ]
-            , button [ class "nes-btn is-error", onClick (DeleteService service)] [ text "Delete" ]
+            , button [ class "nes-btn is-error", onClick (DeleteService service) ] [ text "Delete" ]
             ]
         ]
 
@@ -347,9 +352,6 @@ getServices =
         }
 
 
-
-
-
 addNewService : Service -> Cmd Msg
 addNewService service =
     let
@@ -362,12 +364,13 @@ addNewService service =
         , expect = Http.expectJson GotService decoder
         }
 
+
 deleteService : Service -> Cmd Msg
 deleteService service =
     Http.request
         { method = "DELETE"
         , headers = []
-        , url = "http://localhost:3000/services/" ++ (String.fromInt service.dockerPort)
+        , url = "http://localhost:3000/services/" ++ String.fromInt service.dockerPort
         , body = Http.emptyBody
         , timeout = Nothing
         , tracker = Nothing
