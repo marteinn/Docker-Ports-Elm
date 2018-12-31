@@ -10,6 +10,10 @@ import Json.Decode exposing (Decoder, field, int, list, map4, string)
 import Json.Encode as Encode
 
 
+serviceUrl =
+    "http://localhost:3000/services"
+
+
 
 -- MAIN
 
@@ -82,26 +86,26 @@ init _ =
 type Msg
     = NoOp
     | Failure
+    | GotServices (Result Http.Error (List Service))
+    | LoadingServices
     | ShowAddNewService
     | CloseAddNewService
     | UpdateNewServiceProject String
     | UpdateNewServiceDockerPort String
     | UpdateNewServiceName String
     | UpdateNewServiceComment String
+    | SaveNewService
+    | GotService (Result Http.Error Service)
+    | ShowEditService Service
     | EditServiceProject String
     | EditServiceDockerPort String
     | EditServiceName String
     | EditServiceComment String
     | SaveEditService
     | CloseEditService
-    | LoadingServices
-    | SaveNewService
-    | DeleteService Service
-    | ShowEditService Service
-    | DeletedService (Result Http.Error ())
-    | GotServices (Result Http.Error (List Service))
-    | GotService (Result Http.Error Service)
     | UpdatedService (Result Http.Error Service)
+    | DeleteService Service
+    | DeletedService (Result Http.Error ())
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -454,7 +458,7 @@ viewService service =
 getServices : Cmd Msg
 getServices =
     Http.get
-        { url = "http://localhost:3000/services"
+        { url = serviceUrl
         , expect = Http.expectJson GotServices listDecoder
         }
 
@@ -467,7 +471,7 @@ addNewService service =
     in
     Http.post
         { body = body
-        , url = "http://localhost:3000/services"
+        , url = serviceUrl
         , expect = Http.expectJson GotService decoder
         }
 
@@ -477,7 +481,7 @@ deleteService service =
     Http.request
         { method = "DELETE"
         , headers = []
-        , url = "http://localhost:3000/services/" ++ String.fromInt service.dockerPort
+        , url = serviceUrl ++ String.fromInt service.dockerPort
         , body = Http.emptyBody
         , timeout = Nothing
         , tracker = Nothing
@@ -490,7 +494,7 @@ updateService service =
     Http.request
         { method = "PUT"
         , headers = []
-        , url = "http://localhost:3000/services/" ++ String.fromInt service.dockerPort
+        , url = serviceUrl ++ String.fromInt service.dockerPort
         , body = encoder service |> Http.jsonBody
         , timeout = Nothing
         , tracker = Nothing
