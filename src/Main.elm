@@ -101,6 +101,7 @@ type Msg
     | DeletedService (Result Http.Error ())
     | GotServices (Result Http.Error (List Service))
     | GotService (Result Http.Error Service)
+    | UpdatedService (Result Http.Error Service)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -191,7 +192,10 @@ update msg model =
                 updatedServices =
                     filteredServices ++ [ editService ]
             in
-            ( { model | services = updatedServices, editService = Nothing }, Cmd.none )
+            ( { model | services = updatedServices, editService = Nothing }, updateService editService )
+
+        UpdatedService result ->
+            ( model, Cmd.none )
 
         CloseEditService ->
             ( { model | editService = Nothing }, Cmd.none )
@@ -478,6 +482,18 @@ deleteService service =
         , timeout = Nothing
         , tracker = Nothing
         , expect = Http.expectWhatever DeletedService
+        }
+
+updateService : Service -> Cmd Msg
+updateService service =
+    Http.request
+        { method = "PUT"
+        , headers = []
+        , url = "http://localhost:3000/services/" ++ String.fromInt service.dockerPort
+        , body = encoder service |> Http.jsonBody
+        , timeout = Nothing
+        , tracker = Nothing
+        , expect = Http.expectJson UpdatedService decoder
         }
 
 
