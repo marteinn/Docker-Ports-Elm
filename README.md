@@ -10,7 +10,8 @@ Show associated docker ports from a external api
 
 ## TODO
 - [x] Add new service
-- [ ] Edit existing service
+- [x] Edit existing service
 - [x] Delete service
 - [ ] Reload services
-- [ ] Sorting
+- [x] Sorting
+- [ ] Fix bug with name required

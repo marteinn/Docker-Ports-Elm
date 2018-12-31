@@ -38,14 +38,15 @@ const createService = async (event, context) => {
         });
     }
 
-    const cleanedExtraValues = R.filter(R.pipe(R.isEmpty, R.not), extraValues)
-    const model = {
-        ...cleanedExtraValues,
+    let model = {
+        ...extraValues,
         dockerPort,
         project,
         name,
         created: new Date().getTime()
     };
+    model = R.filter(R.pipe(R.isEmpty, R.not), model)
+
     try {
         await putDoc({ TableName: getSettings().TABLE_NAME }, model)
         return {
@@ -53,8 +54,9 @@ const createService = async (event, context) => {
             headers: CORS_HEADERS,
             body: JSON.stringify({
                 ...model,
+                project: R.propOr('', 'project', model),
+                name: R.propOr('', 'name', model),
                 comment: R.propOr('', 'comment', model),
-                project: R.propOr('', 'project', model)
             })
         };
     } catch (err) {
@@ -112,6 +114,7 @@ const getService = async (event, context) => {
         });
         items = items.map(x => ({
             ...x,
+            name: R.propOr('', 'name', x),
             comment: R.propOr('', 'comment', x),
             project: R.propOr('', 'project', x)
         }), items)
@@ -154,22 +157,24 @@ const updateService = async (event, context) => {
             project: service.project,
         })
 
-        const cleanedExtraValues = R.filter(R.pipe(R.isEmpty, R.not), extraValues)
-        const model = {
-            ...cleanedExtraValues,
+        let model = {
+            ...extraValues,
             dockerPort,
             project,
             name,
             created: new Date().getTime()
         };
+        model = R.filter(R.pipe(R.isEmpty, R.not), model)
+        console.log(model)
         await putDoc({ TableName: getSettings().TABLE_NAME }, model)
 
         return {
             statusCode: 201,
             body: JSON.stringify({
                 ...model,
+                project: R.propOr('', 'project', model),
+                name: R.propOr('', 'name', model),
                 comment: R.propOr('', 'comment', model),
-                project: R.propOr('', 'project', model)
             })
         }
     } catch (err) {

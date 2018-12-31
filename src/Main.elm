@@ -484,6 +484,7 @@ deleteService service =
         , expect = Http.expectWhatever DeletedService
         }
 
+
 updateService : Service -> Cmd Msg
 updateService service =
     Http.request
