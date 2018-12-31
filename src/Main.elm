@@ -10,6 +10,7 @@ import Json.Decode exposing (Decoder, field, int, list, map4, string)
 import Json.Encode as Encode
 
 
+serviceUrl : String
 serviceUrl =
     "http://localhost:3000/services"
 
@@ -85,27 +86,28 @@ init _ =
 
 type Msg
     = NoOp
-    | Failure
-    | GotServices (Result Http.Error (List Service))
-    | LoadingServices
+      -- load services
+    | HandleServicesLoaded (Result Http.Error (List Service))
+      --create service
     | ShowAddNewService
     | CloseAddNewService
-    | UpdateNewServiceProject String
-    | UpdateNewServiceDockerPort String
-    | UpdateNewServiceName String
-    | UpdateNewServiceComment String
-    | SaveNewService
-    | GotService (Result Http.Error Service)
+    | UpdateNewServiceProject Service String
+    | UpdateNewServiceDockerPort Service String
+    | UpdateNewServiceName Service String
+    | UpdateNewServiceComment Service String
+    | CreateNewService Service
+    | HandleServiceCreated (Result Http.Error Service)
+      --edit service
     | ShowEditService Service
-    | EditServiceProject String
-    | EditServiceDockerPort String
-    | EditServiceName String
-    | EditServiceComment String
-    | SaveEditService
     | CloseEditService
-    | UpdatedService (Result Http.Error Service)
+    | EditServiceProject Service String
+    | EditServiceName Service String
+    | EditServiceComment Service String
+    | UpdateService Service
+    | HandleServiceUpdated (Result Http.Error Service)
+      --delete service
     | DeleteService Service
-    | DeletedService (Result Http.Error ())
+    | HandleServiceDeleted (Result Http.Error ())
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -114,137 +116,42 @@ update msg model =
         NoOp ->
             ( { model | loadingState = Idle }, Cmd.none )
 
-        Failure ->
-            ( { model | loadingState = Error }, Cmd.none )
+        --load services
+        HandleServicesLoaded result ->
+            case result of
+                Ok services ->
+                    ( { model | loadingState = Complete, services = services }, Cmd.none )
 
-        LoadingServices ->
-            ( { model | loadingState = Loading }, Cmd.none )
+                Err err ->
+                    let
+                        _ =
+                            Debug.log "error" err
+                    in
+                    ( { model | loadingState = Error, services = [] }, Cmd.none )
 
+        --create service
         ShowAddNewService ->
             ( { model | showAddNew = True }, Cmd.none )
-
-        ShowEditService service ->
-            ( { model | editService = Just service }, Cmd.none )
 
         CloseAddNewService ->
             ( { model | showAddNew = False }, Cmd.none )
 
-        SaveNewService ->
-            ( { model | showAddNew = False }, addNewService model.newService )
+        CreateNewService service ->
+            ( { model | showAddNew = False }, createService service )
 
-        DeleteService service ->
-            let
-                services =
-                    model.services
+        UpdateNewServiceProject service value ->
+            ( { model | newService = { service | project = value } }, Cmd.none )
 
-                updatedServices =
-                    List.filter (isNotService service) services
-            in
-            ( { model | services = updatedServices }, deleteService service )
+        UpdateNewServiceDockerPort service value ->
+            ( { model | newService = { service | dockerPort = String.toInt value |> Maybe.withDefault 0 } }, Cmd.none )
 
-        DeletedService _ ->
-            ( model, Cmd.none )
+        UpdateNewServiceName service value ->
+            ( { model | newService = { service | name = value } }, Cmd.none )
 
-        EditServiceProject value ->
-            let
-                service =
-                    Maybe.withDefault emptyService model.editService
+        UpdateNewServiceComment service value ->
+            ( { model | newService = { service | comment = value } }, Cmd.none )
 
-                updatedService =
-                    { service | project = value }
-            in
-            ( { model | editService = Just updatedService }, Cmd.none )
-
-        EditServiceDockerPort value ->
-            let
-                service =
-                    Maybe.withDefault emptyService model.editService
-
-                updatedService =
-                    { service | dockerPort = String.toInt value |> Maybe.withDefault 0 }
-            in
-            ( { model | editService = Just updatedService }, Cmd.none )
-
-        EditServiceName value ->
-            let
-                service =
-                    Maybe.withDefault emptyService model.editService
-
-                updatedService =
-                    { service | name = value }
-            in
-            ( { model | editService = Just updatedService }, Cmd.none )
-
-        EditServiceComment value ->
-            let
-                service =
-                    Maybe.withDefault emptyService model.editService
-
-                updatedService =
-                    { service | comment = value }
-            in
-            ( { model | editService = Just updatedService }, Cmd.none )
-
-        SaveEditService ->
-            let
-                editService =
-                    Maybe.withDefault emptyService model.editService
-
-                filteredServices =
-                    List.filter (isNotService editService) model.services
-
-                updatedServices =
-                    filteredServices ++ [ editService ]
-            in
-            ( { model | services = updatedServices, editService = Nothing }, updateService editService )
-
-        UpdatedService result ->
-            ( model, Cmd.none )
-
-        CloseEditService ->
-            ( { model | editService = Nothing }, Cmd.none )
-
-        UpdateNewServiceProject value ->
-            let
-                service =
-                    model.newService
-
-                updatedService =
-                    { service | project = value }
-            in
-            ( { model | newService = updatedService }, Cmd.none )
-
-        UpdateNewServiceDockerPort value ->
-            let
-                service =
-                    model.newService
-
-                updatedService =
-                    { service | dockerPort = String.toInt value |> Maybe.withDefault 0 }
-            in
-            ( { model | newService = updatedService }, Cmd.none )
-
-        UpdateNewServiceName value ->
-            let
-                service =
-                    model.newService
-
-                updatedService =
-                    { service | name = value }
-            in
-            ( { model | newService = updatedService }, Cmd.none )
-
-        UpdateNewServiceComment value ->
-            let
-                service =
-                    model.newService
-
-                updatedService =
-                    { service | comment = value }
-            in
-            ( { model | newService = updatedService }, Cmd.none )
-
-        GotService result ->
+        HandleServiceCreated result ->
             case result of
                 Ok service ->
                     let
@@ -260,17 +167,48 @@ update msg model =
                     in
                     ( model, Cmd.none )
 
-        GotServices result ->
-            case result of
-                Ok services ->
-                    ( { model | loadingState = Complete, services = services }, Cmd.none )
+        --edit service
+        ShowEditService service ->
+            ( { model | editService = Just service }, Cmd.none )
 
-                Err err ->
-                    let
-                        _ =
-                            Debug.log "error" err
-                    in
-                    ( { model | loadingState = Error, services = [] }, Cmd.none )
+        CloseEditService ->
+            ( { model | editService = Nothing }, Cmd.none )
+
+        EditServiceProject service value ->
+            ( { model | editService = Just { service | project = value } }, Cmd.none )
+
+        EditServiceName service value ->
+            ( { model | editService = Just { service | name = value } }, Cmd.none )
+
+        EditServiceComment service value ->
+            ( { model | editService = Just { service | comment = value } }, Cmd.none )
+
+        UpdateService service ->
+            let
+                filteredServices =
+                    List.filter (isNotService service) model.services
+
+                updatedServices =
+                    filteredServices ++ [ service]
+            in
+            ( { model | services = updatedServices, editService = Nothing }, updateService service)
+
+        HandleServiceUpdated result ->
+            ( model, Cmd.none )
+
+        --delete service
+        DeleteService service ->
+            let
+                services =
+                    model.services
+
+                updatedServices =
+                    List.filter (isNotService service) services
+            in
+            ( { model | services = updatedServices }, deleteService service )
+
+        HandleServiceDeleted _ ->
+            ( model, Cmd.none )
 
 
 
@@ -352,22 +290,21 @@ viewEditService service =
         [ h2 [ class "title" ] [ text "Edit service" ]
         , div [ class "nes-field" ]
             [ label [] [ text "Project" ]
-            , input [ class "nes-input", value service.project, placeholder "Coffee Machine Website", onInput EditServiceProject ] []
+            , input [ class "nes-input", value service.project, placeholder "Coffee Machine Website", onInput (EditServiceProject service) ] []
             ]
-
-        {--, div [ class "nes-field" ]--}
-        --[ label [] [ text "Port" ]
-        --, input [ class "nes-input", value (String.fromInt service.dockerPort), placeholder "7777", onInput EditServiceDockerPort ] []
-        {--]--}
+        , div [ class "nes-field" ]
+            [ label [] [ text "Port (Cannot be altered)" ]
+            , input [ class "nes-input", disabled True, value (String.fromInt service.dockerPort), placeholder "7777" ] []
+        ]
         , div [ class "nes-field" ]
             [ label [] [ text "Name" ]
-            , input [ class "nes-input", value service.name, placeholder "Web", onInput EditServiceName ] []
+            , input [ class "nes-input", value service.name, placeholder "Web", onInput (EditServiceName service) ] []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Comment" ]
-            , textarea [ class "nes-textarea", value service.comment, onInput EditServiceComment ] []
+            , textarea [ class "nes-textarea", value service.comment, onInput (EditServiceComment service) ] []
             ]
-        , button [ class "nes-btn is-primary", onClick SaveEditService ] [ text "Update" ]
+        , button [ class "nes-btn is-primary", onClick (UpdateService service) ] [ text "Update" ]
         , button [ class "nes-btn is-secondary", onClick CloseEditService ] [ text "Close" ]
         ]
 
@@ -378,21 +315,21 @@ viewCreateNewService service =
         [ h2 [ class "title" ] [ text "Register new service" ]
         , div [ class "nes-field" ]
             [ label [] [ text "Project" ]
-            , input [ class "nes-input", value service.project, placeholder "Coffee Machine Website", onInput UpdateNewServiceProject ] []
+            , input [ class "nes-input", value service.project, placeholder "Coffee Machine Website", onInput (UpdateNewServiceProject service) ] []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Port" ]
-            , input [ class "nes-input", value (String.fromInt service.dockerPort), placeholder "7777", onInput UpdateNewServiceDockerPort ] []
+            , input [ class "nes-input", value (String.fromInt service.dockerPort), placeholder "7777", onInput (UpdateNewServiceDockerPort service) ] []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Name" ]
-            , input [ class "nes-input", value service.name, placeholder "Web", onInput UpdateNewServiceName ] []
+            , input [ class "nes-input", value service.name, placeholder "Web", onInput (UpdateNewServiceName service) ] []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Comment" ]
-            , textarea [ class "nes-textarea", value service.comment, onInput UpdateNewServiceComment ] []
+            , textarea [ class "nes-textarea", value service.comment, onInput (UpdateNewServiceComment service) ] []
             ]
-        , button [ class "nes-btn is-primary", onClick SaveNewService ] [ text "Add" ]
+        , button [ class "nes-btn is-primary", onClick (CreateNewService service) ] [ text "Add" ]
         , button [ class "nes-btn is-secondary", onClick CloseAddNewService ] [ text "Close" ]
         ]
 
@@ -459,20 +396,16 @@ getServices : Cmd Msg
 getServices =
     Http.get
         { url = serviceUrl
-        , expect = Http.expectJson GotServices listDecoder
+        , expect = Http.expectJson HandleServicesLoaded listDecoder
         }
 
 
-addNewService : Service -> Cmd Msg
-addNewService service =
-    let
-        body =
-            encoder service |> Http.jsonBody
-    in
+createService : Service -> Cmd Msg
+createService service =
     Http.post
-        { body = body
+        { body = encoder service |> Http.jsonBody
         , url = serviceUrl
-        , expect = Http.expectJson GotService decoder
+        , expect = Http.expectJson HandleServiceCreated decoder
         }
 
 
@@ -485,7 +418,7 @@ deleteService service =
         , body = Http.emptyBody
         , timeout = Nothing
         , tracker = Nothing
-        , expect = Http.expectWhatever DeletedService
+        , expect = Http.expectWhatever HandleServiceDeleted
         }
 
 
@@ -498,7 +431,7 @@ updateService service =
         , body = encoder service |> Http.jsonBody
         , timeout = Nothing
         , tracker = Nothing
-        , expect = Http.expectJson UpdatedService decoder
+        , expect = Http.expectJson HandleServiceUpdated decoder
         }
 
 
