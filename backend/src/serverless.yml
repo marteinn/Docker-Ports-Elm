@@ -49,6 +49,17 @@ functions:
           path: services
           method: post
           cors: true
+  updateService:
+    handler: handlers.updateService
+    events:
+      - http:
+          path: services/{dockerPort}
+          method: put
+          cors: true
+          request:
+            parameters:
+              paths:
+                dockerPort: true
   deleteService:
     handler: handlers.deleteService
     events:

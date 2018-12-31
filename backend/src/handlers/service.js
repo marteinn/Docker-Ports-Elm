@@ -125,6 +125,58 @@ const getService = async (event, context) => {
     }
 };
 
+const updateService = async (event, context) => {
+    let { dockerPort } = event.pathParameters
+    const {
+        project, name, ...extraValues
+    } = JSON.parse(event.body);
+
+    dockerPort = Number(dockerPort)
+
+    const services = await queryDoc({ TableName: getSettings().TABLE_NAME }, {
+        KeyConditionExpression: 'dockerPort = :dockerPort',
+        ExpressionAttributeValues: {
+            ':dockerPort': dockerPort,
+        }
+    })
+
+    if (!services.length) {
+        return buildErrorResponse({
+            message: "Service was not found",
+            code: "PORT_NOT_FOUND"
+        });
+    }
+
+    try {
+        const service = R.head(services)
+        await deleteDoc({ TableName: getSettings().TABLE_NAME }, {
+            dockerPort: service.dockerPort,
+            project: service.project,
+        })
+
+        const cleanedExtraValues = R.filter(R.pipe(R.isEmpty, R.not), extraValues)
+        const model = {
+            ...cleanedExtraValues,
+            dockerPort,
+            project,
+            name,
+            created: new Date().getTime()
+        };
+        await putDoc({ TableName: getSettings().TABLE_NAME }, model)
+
+        return {
+            statusCode: 201,
+            body: JSON.stringify({
+                ...model,
+                comment: R.propOr('', 'comment', model),
+                project: R.propOr('', 'project', model)
+            })
+        }
+    } catch (err) {
+        return buildErrorResponse(err);
+    }
+}
+
 const deleteService = async (event, context) => {
     let { dockerPort } = event.pathParameters
     dockerPort = Number(dockerPort)
@@ -158,4 +210,5 @@ module.exports = {
     createService: withOfflineSupport(createService),
     getService: withOfflineSupport(getService),
     deleteService: withOfflineSupport(deleteService),
+    updateService: withOfflineSupport(updateService),
 };
