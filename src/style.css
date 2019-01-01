@@ -2,6 +2,14 @@ body {
     margin: 2rem
 }
 
+.header {
+    margin-bottom: 2rem;
+}
+
 .table-full-width {
     width: calc(100% - 8px);
+}
+
+.nes-container {
+    margin-bottom: 2rem;
 }

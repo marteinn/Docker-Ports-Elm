@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Task
 import Array
 import Browser
 import Html exposing (..)
@@ -79,7 +80,7 @@ emptyModel =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( emptyModel, getServices )
+    ( emptyModel, Task.succeed LoadServices |> Task.perform identity )
 
 
 
@@ -89,6 +90,7 @@ init _ =
 type Msg
     = NoOp
       -- load services
+    | LoadServices
     | HandleServicesLoaded (Result Http.Error (List Service))
       --create service
     | ShowAddNewService
@@ -119,6 +121,8 @@ update msg model =
             ( { model | loadingState = Idle }, Cmd.none )
 
         --load services
+        LoadServices ->
+            ( { model | loadingState = Loading }, getServices )
         HandleServicesLoaded result ->
             case result of
                 Ok services ->
@@ -241,14 +245,18 @@ view model =
         [ importCss "https://fonts.googleapis.com/css?family=Press+Start+2P"
         , importCss "https://unpkg.com/nes.css/css/nes.min.css"
         , importCss "style.css"
-        , header []
-            [ h1 [] [ text "Docker ports" ]
-            , case model.newService of
+        , header [ class "header" ]
+            [ h1 [] [ text "Docker port registry" ]
+            , p [] [ text "Keeps track on your docker ports" ]
+            , div [] 
+            [ case model.newService of
                 Nothing ->
-                    button [ onClick ShowAddNewService ] [ text "Add new service" ]
+                    button [ class "nes-btn is-primary", onClick ShowAddNewService ] [ text "Add New Service" ]
 
                 _ ->
                     Html.text ""
+                , button [ class "nes-btn is-secondary", onClick LoadServices ] [ text "Reload list" ]
+            ]
             ]
         , case model.newService of
             Just service ->
@@ -280,7 +288,7 @@ view model =
 viewEditService : Service -> Html Msg
 viewEditService service =
     section [ class "nes-container with-title" ]
-        [ h2 [ class "title" ] [ text "Edit service" ]
+        [ h2 [ class "title" ] [ text "Edit Service" ]
         , div [ class "nes-field" ]
             [ label [] [ text "Project" ]
             , input [ class "nes-input", value service.project, placeholder "Coffee Machine Website", onInput (EditServiceProject service) ] []
@@ -297,15 +305,17 @@ viewEditService service =
             [ label [] [ text "Comment" ]
             , textarea [ class "nes-textarea", value service.comment, onInput (EditServiceComment service) ] []
             ]
-        , button [ class "nes-btn is-primary", onClick (UpdateService service) ] [ text "Update" ]
-        , button [ class "nes-btn is-secondary", onClick CloseEditService ] [ text "Close" ]
+        , div [] 
+            [ button [ class "nes-btn is-primary", onClick (UpdateService service) ] [ text "Update" ]
+            , button [ class "nes-btn is-secondary", onClick CloseEditService ] [ text "Close" ]
+            ]
         ]
 
 
 viewCreateNewService : Service -> Html Msg
 viewCreateNewService service =
     section [ class "nes-container with-title" ]
-        [ h2 [ class "title" ] [ text "Register new service" ]
+        [ h2 [ class "title" ] [ text "Add New Service" ]
         , div [ class "nes-field" ]
             [ label [] [ text "Project" ]
             , input [ class "nes-input", value service.project, placeholder "Coffee Machine Website", onInput (UpdateNewServiceProject service) ] []
@@ -322,8 +332,10 @@ viewCreateNewService service =
             [ label [] [ text "Comment" ]
             , textarea [ class "nes-textarea", value service.comment, onInput (UpdateNewServiceComment service) ] []
             ]
-        , button [ class "nes-btn is-primary", onClick (CreateNewService service) ] [ text "Add" ]
-        , button [ class "nes-btn is-secondary", onClick CloseAddNewService ] [ text "Close" ]
+        , div []
+            [ button [ class "nes-btn is-primary", onClick (CreateNewService service) ] [ text "Add" ]
+            , button [ class "nes-btn is-secondary", onClick CloseAddNewService ] [ text "Close" ]
+            ]
         ]
 
 

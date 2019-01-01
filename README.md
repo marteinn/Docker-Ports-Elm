@@ -19,16 +19,17 @@ A service for solving the issue with keeping track on docker ports for various p
 - [x] Add new service
 - [x] Edit existing service
 - [x] Delete service
-- [ ] Reload services
+- [x] Reload services
 - [x] Sorting
 - [x] Fix bug with name beeing required
-- [ ] Css fix for add vs close
-- [ ] Css fix for update vs close
-- [ ] Css fix for add new service
+- [x] Css fix for add vs close
+- [x] Css fix for update vs close
+- [x] Css fix for add new service
 - [ ] Add scrollto when editing
 - [ ] Add required fields on input
 - [x] Refactor imports
 - [x] Add a maybe monad to new service
+- [x] Find a better way to include js
 
 
 
