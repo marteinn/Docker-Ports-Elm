@@ -6,7 +6,12 @@ A service for solving the issue with keeping track on docker ports for various p
 ## Getting started
 
 ### Frontend
-- `elm reactor` or `elm make src/Main.elm`
+
+#### Development
+- `elm reactor`, then open `src/Reactor.elm`
+
+#### Production
+- `elm make src/Main.elm --output=elm.js` then open index.html
 
 ### Backend
 - `cd backend`
@@ -30,6 +35,7 @@ A service for solving the issue with keeping track on docker ports for various p
 - [x] Refactor imports
 - [x] Add a maybe monad to new service
 - [x] Find a better way to include js
+- [x] Find a proper way to include css
 
 
 

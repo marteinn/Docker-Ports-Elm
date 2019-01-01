@@ -1,4 +1,4 @@
-module Main exposing (main)
+module Main exposing (main, reactor)
 
 import Array
 import Browser
@@ -32,6 +32,18 @@ main =
                 }
         }
 
+reactor =
+    Browser.document
+        { init = init
+        , update = update
+        , subscriptions = always Sub.none
+        , view =
+            \model ->
+                { title = "Docker Port Registry"
+                , body = [ (view model) |> withStyle ]
+                }
+        }
+
 
 
 -- VALIDATORS
@@ -52,9 +64,6 @@ validateService service =
               else
                 ""
             ]
-
-        _ =
-            Debug.log "validation" errors
     in
     errors |> List.filter (\x -> String.isEmpty x == False)
 
@@ -167,10 +176,6 @@ update msg model =
                     ( { model | loadingState = Complete, services = services }, Cmd.none )
 
                 Err err ->
-                    let
-                        _ =
-                            Debug.log "error" err
-                    in
                     ( { model | loadingState = Error, services = [] }, Cmd.none )
 
         --create service
@@ -237,10 +242,6 @@ update msg model =
                     ( { model | services = services, newService = Nothing }, Cmd.none )
 
                 Err err ->
-                    let
-                        _ =
-                            Debug.log "error" err
-                    in
                     ( model, Cmd.none )
 
         --edit service
@@ -312,18 +313,21 @@ isNotService needle service =
 
 -- VIEW
 
+withStyle : Html Msg -> Html Msg
+withStyle html =
+    div []
+    [
+        importCss "https://fonts.googleapis.com/css?family=Press+Start+2P"
+        , importCss "https://unpkg.com/nes.css/css/nes.min.css"
+        , importCss "style.css"
+        , html
+    ]
+
 
 view : Model -> Html Msg
 view model =
-    let
-        _ =
-            Debug.log "model" model
-    in
     div []
-        [ importCss "https://fonts.googleapis.com/css?family=Press+Start+2P"
-        , importCss "https://unpkg.com/nes.css/css/nes.min.css"
-        , importCss "style.css"
-        , header [ class "header" ]
+        [ header [ class "header" ]
             [ h1 [] [ text "Docker Port Registry" ]
             , p [] [ text "Keeps track on your docker ports" ]
             , div []
