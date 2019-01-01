@@ -63,8 +63,7 @@ type LoadingState
 type alias Model =
     { services : List Service
     , loadingState : LoadingState
-    , showAddNew : Bool
-    , newService : Service
+    , newService : Maybe Service
     , editService : Maybe Service
     }
 
@@ -73,8 +72,7 @@ emptyModel : Model
 emptyModel =
     { services = []
     , loadingState = Idle
-    , showAddNew = False
-    , newService = emptyService
+    , newService = Nothing
     , editService = Nothing
     }
 
@@ -135,25 +133,25 @@ update msg model =
 
         --create service
         ShowAddNewService ->
-            ( { model | showAddNew = True }, Cmd.none )
+            ( { model | newService = Just emptyService }, Cmd.none )
 
         CloseAddNewService ->
-            ( { model | showAddNew = False }, Cmd.none )
+            ( { model | newService = Nothing }, Cmd.none )
 
         CreateNewService service ->
-            ( { model | showAddNew = False }, createService service )
+            ( { model | newService = Nothing }, createService service )
 
         UpdateNewServiceProject service value ->
-            ( { model | newService = { service | project = value } }, Cmd.none )
+            ( { model | newService = Just { service | project = value } }, Cmd.none )
 
         UpdateNewServiceDockerPort service value ->
-            ( { model | newService = { service | dockerPort = String.toInt value |> Maybe.withDefault 0 } }, Cmd.none )
+            ( { model | newService = Just { service | dockerPort = String.toInt value |> Maybe.withDefault 0 } }, Cmd.none )
 
         UpdateNewServiceName service value ->
-            ( { model | newService = { service | name = value } }, Cmd.none )
+            ( { model | newService = Just { service | name = value } }, Cmd.none )
 
         UpdateNewServiceComment service value ->
-            ( { model | newService = { service | comment = value } }, Cmd.none )
+            ( { model | newService = Just { service | comment = value } }, Cmd.none )
 
         HandleServiceCreated result ->
             case result of
@@ -162,7 +160,7 @@ update msg model =
                         services =
                             model.services ++ [ service ]
                     in
-                    ( { model | services = services, newService = emptyService }, Cmd.none )
+                    ( { model | services = services, newService = Nothing }, Cmd.none )
 
                 Err err ->
                     let
@@ -245,19 +243,19 @@ view model =
         , importCss "style.css"
         , header []
             [ h1 [] [ text "Docker ports" ]
-            , case model.showAddNew of
-                False ->
+            , case model.newService of
+                Nothing ->
                     button [ onClick ShowAddNewService ] [ text "Add new service" ]
 
-                True ->
+                _ ->
                     Html.text ""
             ]
-        , case model.showAddNew of
-            False ->
-                Html.text ""
+        , case model.newService of
+            Just service ->
+                viewCreateNewService service
 
-            True ->
-                viewCreateNewService model.newService
+            Nothing ->
+                Html.text ""
         , case model.editService of
             Just service ->
                 viewEditService service

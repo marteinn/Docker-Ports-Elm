@@ -27,7 +27,8 @@ A service for solving the issue with keeping track on docker ports for various p
 - [ ] Css fix for add new service
 - [ ] Add scrollto when editing
 - [ ] Add required fields on input
-- [ ] Refactor imports
+- [x] Refactor imports
+- [x] Add a maybe monad to new service
 
 
 
