@@ -1,6 +1,5 @@
 module Main exposing (main)
 
-import Task
 import Array
 import Browser
 import Html exposing (..)
@@ -9,11 +8,12 @@ import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
+import Task
 
 
-serviceUrl : String
-serviceUrl =
-    "http://localhost:3000/services"
+baseUrl : String
+baseUrl =
+    "http://localhost:3000"
 
 
 
@@ -24,13 +24,39 @@ main =
     Browser.document
         { init = init
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = always Sub.none
         , view =
             \model ->
                 { title = "Docker port registry"
                 , body = [ view model ]
                 }
         }
+
+
+
+-- VALIDATORS
+
+
+validateService : Service -> List String
+validateService service =
+    let
+        errors =
+            [ if String.isEmpty service.project then
+                "Project cannot be empty"
+
+              else
+                ""
+            , if service.dockerPort <= 0 then
+                "Docker port must be set"
+
+              else
+                ""
+            ]
+
+        _ =
+            Debug.log "validation" errors
+    in
+    errors |> List.filter (\x -> String.isEmpty x == False)
 
 
 
@@ -64,7 +90,9 @@ type LoadingState
 type alias Model =
     { services : List Service
     , loadingState : LoadingState
+    , newServiceErrors : List String
     , newService : Maybe Service
+    , editServiceErrors : List String
     , editService : Maybe Service
     }
 
@@ -73,7 +101,9 @@ emptyModel : Model
 emptyModel =
     { services = []
     , loadingState = Idle
+    , newServiceErrors = []
     , newService = Nothing
+    , editServiceErrors = []
     , editService = Nothing
     }
 
@@ -123,6 +153,7 @@ update msg model =
         --load services
         LoadServices ->
             ( { model | loadingState = Loading }, getServices )
+
         HandleServicesLoaded result ->
             case result of
                 Ok services ->
@@ -143,19 +174,51 @@ update msg model =
             ( { model | newService = Nothing }, Cmd.none )
 
         CreateNewService service ->
-            ( { model | newService = Nothing }, createService service )
+            let
+                errors =
+                    validateService service
+
+                existingServices =
+                    List.filter
+                        (\x -> x.dockerPort == service.dockerPort)
+                        model.services
+
+                hasExistingService =
+                    existingServices /= []
+
+                updatedErrors =
+                    if hasExistingService then
+                        errors ++ [ "Port already taken" ]
+
+                    else
+                        errors
+            in
+            case updatedErrors of
+                [] ->
+                    ( { model | newService = Nothing }, createService service )
+
+                _ ->
+                    ( { model | newServiceErrors = updatedErrors }, Cmd.none )
 
         UpdateNewServiceProject service value ->
-            ( { model | newService = Just { service | project = value } }, Cmd.none )
+            ( { model | newService = Just { service | project = value } }
+            , Cmd.none
+            )
 
         UpdateNewServiceDockerPort service value ->
-            ( { model | newService = Just { service | dockerPort = String.toInt value |> Maybe.withDefault 0 } }, Cmd.none )
+            ( { model | newService = Just { service | dockerPort = String.toInt value |> Maybe.withDefault 0 } }
+            , Cmd.none
+            )
 
         UpdateNewServiceName service value ->
-            ( { model | newService = Just { service | name = value } }, Cmd.none )
+            ( { model | newService = Just { service | name = value } }
+            , Cmd.none
+            )
 
         UpdateNewServiceComment service value ->
-            ( { model | newService = Just { service | comment = value } }, Cmd.none )
+            ( { model | newService = Just { service | comment = value } }
+            , Cmd.none
+            )
 
         HandleServiceCreated result ->
             case result of
@@ -191,13 +254,19 @@ update msg model =
 
         UpdateService service ->
             let
+                errors =
+                    validateService service
+
                 filteredServices =
                     List.filter (isNotService service) model.services
 
                 updatedServices =
                     filteredServices ++ [ service ]
             in
-            ( { model | services = updatedServices, editService = Nothing }, updateService service )
+                case errors of
+                    [] -> 
+                        ( { model | services = updatedServices, editService = Nothing }, updateService service )
+                    _ -> ( { model | editServiceErrors = errors }, Cmd.none )
 
         HandleServiceUpdated result ->
             ( model, Cmd.none )
@@ -248,25 +317,31 @@ view model =
         , header [ class "header" ]
             [ h1 [] [ text "Docker port registry" ]
             , p [] [ text "Keeps track on your docker ports" ]
-            , div [] 
-            [ case model.newService of
-                Nothing ->
-                    button [ class "nes-btn is-primary", onClick ShowAddNewService ] [ text "Add New Service" ]
+            , div []
+                [ case model.newService of
+                    Nothing ->
+                        button 
+                            [ class "nes-btn is-primary"
+                            , onClick ShowAddNewService 
+                            ] [ text "Add New Service" ]
 
-                _ ->
-                    Html.text ""
-                , button [ class "nes-btn is-secondary", onClick LoadServices ] [ text "Reload list" ]
-            ]
+                    _ ->
+                        Html.text ""
+                , button 
+                    [ class "nes-btn is-secondary"
+                    , onClick LoadServices 
+                    ] [ text "Reload list" ]
+                ]
             ]
         , case model.newService of
             Just service ->
-                viewCreateNewService service
+                viewCreateNewService service model.newServiceErrors
 
             Nothing ->
                 Html.text ""
         , case model.editService of
             Just service ->
-                viewEditService service
+                viewEditService service model.editServiceErrors
 
             Nothing ->
                 Html.text ""
@@ -285,58 +360,131 @@ view model =
         ]
 
 
-viewEditService : Service -> Html Msg
-viewEditService service =
+viewEditService : Service -> List String -> Html Msg
+viewEditService service errors =
     section [ class "nes-container with-title" ]
         [ h2 [ class "title" ] [ text "Edit Service" ]
+        , viewFormErrors errors
         , div [ class "nes-field" ]
             [ label [] [ text "Project" ]
-            , input [ class "nes-input", value service.project, placeholder "Coffee Machine Website", onInput (EditServiceProject service) ] []
+            , input 
+                [ class "nes-input"
+                , value service.project
+                , placeholder "Coffee Machine Website"
+                , onInput (EditServiceProject service) 
+                ] []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Port (Cannot be altered)" ]
-            , input [ class "nes-input", disabled True, value (String.fromInt service.dockerPort), placeholder "7777" ] []
+            , input 
+                [ class "nes-input"
+                , disabled True
+                , value (String.fromInt service.dockerPort)
+                , placeholder "7777" 
+                ] []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Name" ]
-            , input [ class "nes-input", value service.name, placeholder "Web", onInput (EditServiceName service) ] []
+            , input 
+                [ class "nes-input"
+                , value service.name
+                , placeholder "Web"
+                , onInput (EditServiceName service) 
+                ] []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Comment" ]
-            , textarea [ class "nes-textarea", value service.comment, onInput (EditServiceComment service) ] []
+            , textarea 
+                [ class "nes-textarea"
+                , value service.comment
+                , onInput (EditServiceComment service) 
+                ] []
             ]
-        , div [] 
-            [ button [ class "nes-btn is-primary", onClick (UpdateService service) ] [ text "Update" ]
-            , button [ class "nes-btn is-secondary", onClick CloseEditService ] [ text "Close" ]
+        , div []
+            [ button 
+                [ class "nes-btn is-primary"
+                , onClick (UpdateService service) 
+                ] [ text "Update" ]
+            , button 
+                [ class "nes-btn is-secondary"
+                , onClick CloseEditService 
+                ] [ text "Close" ]
             ]
         ]
 
 
-viewCreateNewService : Service -> Html Msg
-viewCreateNewService service =
+viewCreateNewService : Service -> List String -> Html Msg
+viewCreateNewService service errors =
     section [ class "nes-container with-title" ]
         [ h2 [ class "title" ] [ text "Add New Service" ]
+        , viewFormErrors errors
         , div [ class "nes-field" ]
             [ label [] [ text "Project" ]
-            , input [ class "nes-input", value service.project, placeholder "Coffee Machine Website", onInput (UpdateNewServiceProject service) ] []
+            , input 
+                [ class "nes-input"
+                , value service.project
+                , placeholder "Coffee Machine Website"
+                , onInput (UpdateNewServiceProject service) 
+                ] []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Port" ]
-            , input [ class "nes-input", value (String.fromInt service.dockerPort), placeholder "7777", onInput (UpdateNewServiceDockerPort service) ] []
+            , input 
+                [ class "nes-input"
+                , value (String.fromInt service.dockerPort)
+                , placeholder "7777"
+                , onInput (UpdateNewServiceDockerPort service) 
+                ] []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Name" ]
-            , input [ class "nes-input", value service.name, placeholder "Web", onInput (UpdateNewServiceName service) ] []
+            , input 
+                [ class "nes-input"
+                , value service.name
+                , placeholder "Web"
+                , onInput (UpdateNewServiceName service) 
+                ] []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Comment" ]
-            , textarea [ class "nes-textarea", value service.comment, onInput (UpdateNewServiceComment service) ] []
+            , textarea 
+                [ class "nes-textarea"
+                , value service.comment
+                , onInput (UpdateNewServiceComment service) 
+                ] []
             ]
         , div []
-            [ button [ class "nes-btn is-primary", onClick (CreateNewService service) ] [ text "Add" ]
-            , button [ class "nes-btn is-secondary", onClick CloseAddNewService ] [ text "Close" ]
+            [ button 
+                [ class "nes-btn is-primary"
+                , onClick (CreateNewService service) 
+                ] [ text "Add" ]
+            , button 
+                [ class "nes-btn is-secondary"
+                , onClick CloseAddNewService 
+                ] [ text "Close" ]
             ]
         ]
+
+
+viewFormErrors : List String -> Html Msg
+viewFormErrors errors =
+    let
+        items =
+            List.map viewFormError errors
+    in
+    div []
+        [ if errors /= [] then
+            h5 [] [ text "Errors" ]
+
+          else
+            Html.text ""
+        , ul [] items
+        ]
+
+
+viewFormError : String -> Html Msg
+viewFormError error =
+    li [] [ text error ]
 
 
 viewLoader : String -> String -> Html Msg
@@ -400,7 +548,7 @@ viewService service =
 getServices : Cmd Msg
 getServices =
     Http.get
-        { url = serviceUrl
+        { url = baseUrl ++ "/services/"
         , expect = Http.expectJson HandleServicesLoaded listDecoder
         }
 
@@ -409,7 +557,7 @@ createService : Service -> Cmd Msg
 createService service =
     Http.post
         { body = encoder service |> Http.jsonBody
-        , url = serviceUrl
+        , url = baseUrl ++ "/services/"
         , expect = Http.expectJson HandleServiceCreated decoder
         }
 
@@ -419,7 +567,7 @@ deleteService service =
     Http.request
         { method = "DELETE"
         , headers = []
-        , url = serviceUrl ++ String.fromInt service.dockerPort
+        , url = baseUrl ++ "/services/" ++ String.fromInt service.dockerPort
         , body = Http.emptyBody
         , timeout = Nothing
         , tracker = Nothing
@@ -432,7 +580,7 @@ updateService service =
     Http.request
         { method = "PUT"
         , headers = []
-        , url = serviceUrl ++ String.fromInt service.dockerPort
+        , url = baseUrl ++ "/services/" ++ String.fromInt service.dockerPort
         , body = encoder service |> Http.jsonBody
         , timeout = Nothing
         , tracker = Nothing
