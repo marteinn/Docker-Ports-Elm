@@ -27,7 +27,7 @@ main =
         , subscriptions = always Sub.none
         , view =
             \model ->
-                { title = "Docker port registry"
+                { title = "Docker Port Registry"
                 , body = [ view model ]
                 }
         }
@@ -94,6 +94,7 @@ type alias Model =
     , newService : Maybe Service
     , editServiceErrors : List String
     , editService : Maybe Service
+    , serviceSorting : String
     }
 
 
@@ -105,6 +106,7 @@ emptyModel =
     , newService = Nothing
     , editServiceErrors = []
     , editService = Nothing
+    , serviceSorting = "port"
     }
 
 
@@ -119,6 +121,8 @@ init _ =
 
 type Msg
     = NoOp
+      -- appearence
+    | ChangeSorting String
       -- load services
     | LoadServices
     | HandleServicesLoaded (Result Http.Error (List Service))
@@ -149,6 +153,9 @@ update msg model =
     case msg of
         NoOp ->
             ( { model | loadingState = Idle }, Cmd.none )
+
+        ChangeSorting sorting ->
+            ( { model | serviceSorting = sorting }, Cmd.none )
 
         --load services
         LoadServices ->
@@ -263,10 +270,12 @@ update msg model =
                 updatedServices =
                     filteredServices ++ [ service ]
             in
-                case errors of
-                    [] -> 
-                        ( { model | services = updatedServices, editService = Nothing }, updateService service )
-                    _ -> ( { model | editServiceErrors = errors }, Cmd.none )
+            case errors of
+                [] ->
+                    ( { model | services = updatedServices, editService = Nothing }, updateService service )
+
+                _ ->
+                    ( { model | editServiceErrors = errors }, Cmd.none )
 
         HandleServiceUpdated result ->
             ( model, Cmd.none )
@@ -315,22 +324,24 @@ view model =
         , importCss "https://unpkg.com/nes.css/css/nes.min.css"
         , importCss "style.css"
         , header [ class "header" ]
-            [ h1 [] [ text "Docker port registry" ]
+            [ h1 [] [ text "Docker Port Registry" ]
             , p [] [ text "Keeps track on your docker ports" ]
             , div []
                 [ case model.newService of
                     Nothing ->
-                        button 
+                        button
                             [ class "nes-btn is-primary"
-                            , onClick ShowAddNewService 
-                            ] [ text "Add New Service" ]
+                            , onClick ShowAddNewService
+                            ]
+                            [ text "Add New Service" ]
 
                     _ ->
                         Html.text ""
-                , button 
+                , button
                     [ class "nes-btn is-secondary"
-                    , onClick LoadServices 
-                    ] [ text "Reload list" ]
+                    , onClick LoadServices
+                    ]
+                    [ text "Reload list" ]
                 ]
             ]
         , case model.newService of
@@ -356,7 +367,7 @@ view model =
                 p [] [ text "Error" ]
 
             Complete ->
-                viewServiceList model.services
+                viewServiceList model.services model.serviceSorting
         ]
 
 
@@ -367,48 +378,54 @@ viewEditService service errors =
         , viewFormErrors errors
         , div [ class "nes-field" ]
             [ label [] [ text "Project" ]
-            , input 
+            , input
                 [ class "nes-input"
                 , value service.project
                 , placeholder "Coffee Machine Website"
-                , onInput (EditServiceProject service) 
-                ] []
+                , onInput (EditServiceProject service)
+                ]
+                []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Port (Cannot be altered)" ]
-            , input 
+            , input
                 [ class "nes-input"
                 , disabled True
                 , value (String.fromInt service.dockerPort)
-                , placeholder "7777" 
-                ] []
+                , placeholder "7777"
+                ]
+                []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Name" ]
-            , input 
+            , input
                 [ class "nes-input"
                 , value service.name
                 , placeholder "Web"
-                , onInput (EditServiceName service) 
-                ] []
+                , onInput (EditServiceName service)
+                ]
+                []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Comment" ]
-            , textarea 
+            , textarea
                 [ class "nes-textarea"
                 , value service.comment
-                , onInput (EditServiceComment service) 
-                ] []
+                , onInput (EditServiceComment service)
+                ]
+                []
             ]
         , div []
-            [ button 
+            [ button
                 [ class "nes-btn is-primary"
-                , onClick (UpdateService service) 
-                ] [ text "Update" ]
-            , button 
+                , onClick (UpdateService service)
+                ]
+                [ text "Update" ]
+            , button
                 [ class "nes-btn is-secondary"
-                , onClick CloseEditService 
-                ] [ text "Close" ]
+                , onClick CloseEditService
+                ]
+                [ text "Close" ]
             ]
         ]
 
@@ -420,48 +437,54 @@ viewCreateNewService service errors =
         , viewFormErrors errors
         , div [ class "nes-field" ]
             [ label [] [ text "Project" ]
-            , input 
+            , input
                 [ class "nes-input"
                 , value service.project
                 , placeholder "Coffee Machine Website"
-                , onInput (UpdateNewServiceProject service) 
-                ] []
+                , onInput (UpdateNewServiceProject service)
+                ]
+                []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Port" ]
-            , input 
+            , input
                 [ class "nes-input"
                 , value (String.fromInt service.dockerPort)
                 , placeholder "7777"
-                , onInput (UpdateNewServiceDockerPort service) 
-                ] []
+                , onInput (UpdateNewServiceDockerPort service)
+                ]
+                []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Name" ]
-            , input 
+            , input
                 [ class "nes-input"
                 , value service.name
                 , placeholder "Web"
-                , onInput (UpdateNewServiceName service) 
-                ] []
+                , onInput (UpdateNewServiceName service)
+                ]
+                []
             ]
         , div [ class "nes-field" ]
             [ label [] [ text "Comment" ]
-            , textarea 
+            , textarea
                 [ class "nes-textarea"
                 , value service.comment
-                , onInput (UpdateNewServiceComment service) 
-                ] []
+                , onInput (UpdateNewServiceComment service)
+                ]
+                []
             ]
         , div []
-            [ button 
+            [ button
                 [ class "nes-btn is-primary"
-                , onClick (CreateNewService service) 
-                ] [ text "Add" ]
-            , button 
+                , onClick (CreateNewService service)
+                ]
+                [ text "Add" ]
+            , button
                 [ class "nes-btn is-secondary"
-                , onClick CloseAddNewService 
-                ] [ text "Close" ]
+                , onClick CloseAddNewService
+                ]
+                [ text "Close" ]
             ]
         ]
 
@@ -478,7 +501,7 @@ viewFormErrors errors =
 
           else
             Html.text ""
-        , ul [] items
+        , ul [ class "nes-list is-disc" ] items
         ]
 
 
@@ -500,11 +523,25 @@ viewLoader min_ max_ =
         ]
 
 
-viewServiceList : List Service -> Html Msg
-viewServiceList services =
+viewServiceList : List Service -> String -> Html Msg
+viewServiceList services sorting =
     let
+        sortBy =
+            case sorting of
+                "project" ->
+                    List.sortBy .project
+
+                "name" ->
+                    List.sortBy .name
+
+                "comment" ->
+                    List.sortBy .comment
+
+                _ ->
+                    List.sortBy .dockerPort
+
         sortedServices =
-            List.sortBy .dockerPort services
+            sortBy services
 
         children =
             List.map viewService sortedServices
@@ -515,10 +552,10 @@ viewServiceList services =
             [ table [ class "nes-table is-bordered is-centered table-full-width" ]
                 [ thead []
                     [ tr []
-                        [ td [] [ text "Project" ]
-                        , td [] [ text "Port" ]
-                        , td [] [ text "Name" ]
-                        , td [] [ text "Comment" ]
+                        [ td [] [ a [ onClick (ChangeSorting "project") ] [ text "Project" ] ]
+                        , td [] [ a [ onClick (ChangeSorting "port") ] [ text "Port" ] ]
+                        , td [] [ a [ onClick (ChangeSorting "name") ] [ text "Name" ] ]
+                        , td [] [ a [ onClick (ChangeSorting "comment") ] [ text "Comment" ] ]
                         ]
                     ]
                 , tbody [] children
