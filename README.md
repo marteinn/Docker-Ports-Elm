@@ -25,6 +25,10 @@ A service for solving the issue with keeping track on docker ports for various p
 - [ ] Css fix for add vs close
 - [ ] Css fix for update vs close
 - [ ] Css fix for add new service
+- [ ] Add scrollto when editing
+- [ ] Add required fields on input
+- [ ] Refactor imports
+
 
 
 ## License

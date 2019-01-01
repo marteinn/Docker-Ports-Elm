@@ -6,7 +6,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http
-import Json.Decode exposing (Decoder, field, int, list, map4, string)
+import Json.Decode as Decode
 import Json.Encode as Encode
 
 
@@ -430,18 +430,18 @@ updateService service =
         }
 
 
-listDecoder : Decoder (List Service)
+listDecoder : Decode.Decoder (List Service)
 listDecoder =
-    list decoder
+    Decode.list decoder
 
 
-decoder : Decoder Service
+decoder : Decode.Decoder Service
 decoder =
-    map4 Service
-        (field "project" string)
-        (field "dockerPort" int)
-        (field "name" string)
-        (field "comment" string)
+    Decode.map4 Service
+        (Decode.field "project" Decode.string)
+        (Decode.field "dockerPort" Decode.int)
+        (Decode.field "name" Decode.string)
+        (Decode.field "comment" Decode.string)
 
 
 encoder : Service -> Encode.Value
