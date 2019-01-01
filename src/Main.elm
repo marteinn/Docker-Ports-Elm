@@ -20,11 +20,15 @@ serviceUrl =
 
 
 main =
-    Browser.element
+    Browser.document
         { init = init
         , update = update
-        , subscriptions = subscriptions
-        , view = view
+        , subscriptions = \_ -> Sub.none
+        , view =
+            \model ->
+                { title = "Docker port registry"
+                , body = [ view model ]
+                }
         }
 
 
@@ -189,9 +193,9 @@ update msg model =
                     List.filter (isNotService service) model.services
 
                 updatedServices =
-                    filteredServices ++ [ service]
+                    filteredServices ++ [ service ]
             in
-            ( { model | services = updatedServices, editService = Nothing }, updateService service)
+            ( { model | services = updatedServices, editService = Nothing }, updateService service )
 
         HandleServiceUpdated result ->
             ( model, Cmd.none )
@@ -209,15 +213,6 @@ update msg model =
 
         HandleServiceDeleted _ ->
             ( model, Cmd.none )
-
-
-
--- SUBSCRIPTIONS
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.none
 
 
 
@@ -295,7 +290,7 @@ viewEditService service =
         , div [ class "nes-field" ]
             [ label [] [ text "Port (Cannot be altered)" ]
             , input [ class "nes-input", disabled True, value (String.fromInt service.dockerPort), placeholder "7777" ] []
-        ]
+            ]
         , div [ class "nes-field" ]
             [ label [] [ text "Name" ]
             , input [ class "nes-input", value service.name, placeholder "Web", onInput (EditServiceName service) ] []
